@@ -1,0 +1,4 @@
+1 == 8 print
+8 == 8 print
+2.1 == 2.2 print
+true == false print

@@ -5,9 +5,9 @@
 #include <ctype.h>
 #include "stringbuilder.h"
 
+#define pp(v) printf(#v " = %lu\n", v)
 
-
-void appendc(sb *builder, char c){
+void sb_append_c(sb *builder, char c){
    assert(builder);
    assert(builder->string);
 
@@ -21,8 +21,10 @@ void appendc(sb *builder, char c){
    builder->string[(builder->size)++] = c;
 }
 
-void appends(sb *builder, char *s){
+void sb_append_s(sb *builder, char *s){
+   assert(s);
    size_t s_len = strlen(s);
+
    if(builder->size + s_len > builder->capacity){
       builder->string = realloc(builder->string, builder->capacity + s_len);
 
@@ -34,36 +36,39 @@ void appends(sb *builder, char *s){
    builder->size += s_len;
 }
 
-void initsb(sb *builder, char *s){
-   assert(builder);
+sb sb_from_str(char *s){
+   sb builder;
    size_t s_len = strlen(s);
    size_t init_len = s_len > 8 ? s_len : 8;
 
-   builder->string = malloc(init_len * sizeof(char));
+   builder.string = malloc(init_len * sizeof(char));
 
-   assert(builder->string);
+   assert(builder.string);
+   memset(builder.string, '\0', init_len);
 
-   strncpy(builder->string, s, s_len);
-   builder->capacity = init_len;
-   builder->size = s_len;
+   strncpy(builder.string, s, s_len);
+   builder.capacity = init_len;
+   builder.size = s_len;
+
+   return builder;
 }
 
-void clear(sb *builder){
+void sb_clear(sb *builder){
    assert(builder);
    builder->size = 0;
 }
 
-void freesb(sb *builder){
+void sb_free(sb *builder){
    assert(builder);
    free(builder->string);
 }
 
-void printsb(sb *builder){
+void sb_print(sb *builder){
    assert(builder);
    printf("'%.*s'\n", (int)builder->size, builder->string);
 }
 
-sb get_word(const sb *builder, size_t start, char delim, size_t *spaceidx){
+sb sb_get_word(const sb *builder, size_t start, char delim, size_t *spaceidx){
    
    assert(builder);
    assert(builder->string);
@@ -91,7 +96,7 @@ sb get_word(const sb *builder, size_t start, char delim, size_t *spaceidx){
    return word;
 }
 
-sb substring(sb *builder, size_t start, size_t end){
+sb sb_substring(sb *builder, size_t start, size_t end){
    assert(builder);
    assert(builder->string);
    assert(start < builder->size);
@@ -112,7 +117,7 @@ sb substring(sb *builder, size_t start, size_t end){
    return substr;
 }
 
-sb *sbsplit(const sb *builder, char delim, size_t *length){
+sb *sb_split(const sb *builder, char delim, size_t *length){
    assert(builder);
    assert(builder->string);
 
@@ -132,7 +137,7 @@ sb *sbsplit(const sb *builder, char delim, size_t *length){
    size_t index = 0;
 
    while(next < builder->size){
-      splitted[index++] = get_word(builder, next, delim, &next);
+      splitted[index++] = sb_get_word(builder, next, delim, &next);
       ++next;
    }
 
@@ -143,18 +148,18 @@ sb *sbsplit(const sb *builder, char delim, size_t *length){
    
 }
 
-void freesblist(sb *list, size_t length){
+void sb_free_list(sb *list, size_t length){
    assert(list);
 
    for(size_t i = 0; i < length; ++i){
-      freesb(&(list[i]));
+      sb_free(&(list[i]));
    }
 
    free(list);
 
 }
 
-int sbequal(sb *lhs, sb *rhs){
+int sb_equal(sb *lhs, sb *rhs){
    if(lhs == rhs)
       return 1;
 
@@ -171,7 +176,7 @@ int sbequal(sb *lhs, sb *rhs){
 }
 
 
-int strequal(sb *builder, char *string, size_t size){
+int sb_strequal(sb *builder, char *string, size_t size){
    if(builder == NULL)
       return 0;
 
@@ -184,7 +189,7 @@ int strequal(sb *builder, char *string, size_t size){
    return strncmp(builder->string, string, size) == 0;
 }
 
-char *cstr(sb *builder){
+char *sb_to_cstr(sb *builder){
    assert(builder);
 
    char *sbascstr = malloc((builder->size + 1) * sizeof(char));
@@ -192,4 +197,84 @@ char *cstr(sb *builder){
    sbascstr[builder->size] = '\0';
 
    return sbascstr;
+}
+
+sb sb_read_file(const char *file_name){
+   char buffer[128] = {0};
+   FILE *file = fopen(file_name, "r");
+   assert(file && "File unable to be opened");
+
+   size_t length = 0;
+   sb file_contents = sb_from_str("");
+
+   while((length = fread(buffer, 1, 127, file)) != 0){
+      sb_append_s(&file_contents, buffer);
+      memset(buffer, '\0', 128);
+   }
+
+   fclose(file);
+
+   return file_contents;
+}
+
+sb *sb_read_lines(const char *file_name, size_t *list_length){
+   char buffer[128] = {0};
+   FILE *file = fopen(file_name, "r");
+   assert(file && "File unable to be opened");
+
+   size_t length = 0;
+   sb file_contents = sb_from_str("");
+
+   while((length = fread(buffer, 1, 127, file)) != 0){
+      sb_append_s(&file_contents, buffer);
+      memset(buffer, '\0', 128);
+   }
+
+   sb *list = sb_split(&file_contents, '\n', list_length);
+   
+   sb_free(&file_contents);
+   fclose(file);
+
+   return list;
+}
+
+sb *sb_read_tokens(const char *file_name, size_t *list_length){
+   char buffer[128] = {0};
+   FILE *file = fopen(file_name, "r");
+   assert(file && "File unable to be opened");
+
+   size_t length = 0;
+   sb file_contents = sb_from_str("");
+
+   while((length = fread(buffer, 1, 127, file)) != 0){
+      sb_append_s(&file_contents, buffer);
+      memset(buffer, '\0', 128);
+   }
+
+   sb *list = sb_split(&file_contents, WHITESPACE, list_length);
+   
+   sb_free(&file_contents);
+   fclose(file);
+
+   return list;
+}
+
+
+long sb_indexof(const sb *builder, char c, size_t start){
+   assert(builder);
+   assert(builder->size);
+
+   long index = -1;
+   char *str = builder->string;
+
+   if(start < builder->size){
+      for(size_t i = start; i < builder->size; ++i){
+         if(*str == c){
+            index = i;
+            break;
+         }
+         ++str;
+      }
+   }
+   return index;
 }

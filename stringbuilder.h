@@ -13,31 +13,39 @@ typedef struct _string{
 } sb;
 
 
-void appendc(sb *, char);
+void sb_append_c(sb *, char);
 
-void appends(sb *, char *);
+void sb_append_s(sb *, char *);
 
-void initsb(sb *, char *);
+sb sb_from_str(char *);
 
-void clear(sb *);
+void sb_clear(sb *);
 
-void freesb(sb *);
+void sb_free(sb *);
 
-void freesblist(sb *, size_t);
+void sb_free_list(sb *, size_t);
 
-void printsb(sb *);
+void sb_print(sb *);
 
-sb get_word(const sb *, size_t, char, size_t *);
+sb sb_get_word(const sb *, size_t, char, size_t *);
 
-sb substring(sb *, size_t, size_t);
+sb sb_substring(sb *, size_t, size_t);
 
-sb *sbsplit(const sb *, char, size_t *);
+long sb_indexof(const sb *, char, size_t);
 
-int sbequal(sb *, sb *);
+sb *sb_split(const sb *, char, size_t *);
 
-int strequal(sb *, char *, size_t);
+int sb_equal(sb *, sb *);
 
-char *cstr(sb *);
+int sb_strequal(sb *, char *, size_t);
+
+char *sb_to_cstr(sb *);
+
+sb sb_read_file(const char *);
+
+sb *sb_read_lines(const char *, size_t *);
+
+sb *sb_read_tokens(const char *, size_t *);
 
 
 #endif

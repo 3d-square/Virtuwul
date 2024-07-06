@@ -6,23 +6,24 @@
 typedef enum _ttype{
    INT,
    DOUBLE,
-   LONG,
    STRING,
    CHAR,
    PLUS,
    MINUS,
    DIV,
    MULT,
+   BOOLEAN,
+   EQUAL,
+   PRINT,
    NONE
 } TYPE;
 
 typedef struct _token{
    TYPE type;
+   int freeable;
    union {
-      int number;
       double floating;
-      long lint;
-      unsigned uint;
+      long number;
       char c;
       char *string;
       void *data;
@@ -32,5 +33,7 @@ typedef struct _token{
 token sb_to_token(sb *str);
 
 char *type_to_str(TYPE type);
+
+void free_tokens(token *, size_t);
 
 #endif
