@@ -1,11 +1,15 @@
 #include "stringbuilder.h"
 #include "typecheck.h"
 #include <stdlib.h>
+#include <stdio.h>
 #include <assert.h>
 #include <limits.h>
 
 int is_int(sb *string){
-   assert((string && string->size > 0) && "String is undefined");
+   if(!(string && string->size > 0)){
+      fprintf(stderr, "String is undefined\n");
+      exit(1);
+   }
 
    char *end;
    char *c_str = sb_to_cstr(string);

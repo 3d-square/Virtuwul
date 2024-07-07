@@ -17,15 +17,12 @@ typedef enum _ttype{
    DIV,
    MULT,
    BOOLEAN,
-   SET,
-   LET,
-   IDENTIFIER,
-   TYPE_INT,
-   TYPE_DOUBLE,
-   TYPE_STRING,
    EQUAL,
    PRINT,
-   NONE
+   NONE,
+   IF,
+   DO,
+   END
 } TYPE;
 
 typedef struct _token{
@@ -47,6 +44,8 @@ char *type_to_str(TYPE type);
 void free_tokens(token *, size_t);
 
 void print_tokens(token *, size_t);
+
+void print_token(token *);
 
 token *split_file_contents(sb *, size_t *);
 

@@ -1,3 +1,4 @@
 *.o
 interpreter
 *.bc
+*.txt

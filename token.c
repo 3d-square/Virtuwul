@@ -26,20 +26,18 @@ char *type_to_str(TYPE type){
       case BOOLEAN : return "BOOLEAN";
       case PRINT : return "PRINT";
       case NONE  : return "NONE";
-      case TYPE_INT: return "TYPE_INT";
-      case TYPE_DOUBLE: return "TYPE_DOUBLE";
-      case TYPE_STRING: return "TYPE_STRING";
-      case SET: return "SET";
-      case LET: return "LET";
-      case IDENTIFIER: return "IDENTIFIER";
+      case IF    : return "IF";
+      case DO    : return "DO";
+      case END   : return "END";
    }
 
    return "";
 }
 
 token sb_to_token(sb *str){
+   // sb_print(str);
    token new_token;
-   TYPE type = IDENTIFIER;
+   TYPE type = NONE;
    
    if(sb_strequal(str, "+", 1)){
       type = PLUS;
@@ -47,14 +45,16 @@ token sb_to_token(sb *str){
       type = MINUS;
    }else if(sb_strequal(str, "/", 1)){
       type = DIV;
-   }else if(sb_strequal(str, "=", 1)){
-      type = SET;
    }else if(sb_strequal(str, "*", 1)){
       type = MULT;
    }else if(sb_strequal(str, "==", 2)){
       type = EQUAL;
-   }else if(sb_strequal(str, "let", 3)){
-      type = LET;
+   }else if(sb_strequal(str, "if", 2)){
+      type = IF;
+   }else if(sb_strequal(str, "do", 2)){
+      type = DO;
+   }else if(sb_strequal(str, "end", 3)){
+      type = END;
    }else if(sb_strequal(str, "print", 5)){
       type = PRINT;
    }else if(sb_strequal(str, "true", 4)){
@@ -89,18 +89,22 @@ token sb_to_token(sb *str){
 
 void free_tokens(token *tokens, size_t length){
    for(size_t i = 0; i < length; ++i){
-      if(tokens[i].type == STRING || tokens[i].type == IDENTIFIER){
+      if(tokens[i].type == STRING){
          free(tokens[i].string);
       }
    }
    free(tokens);
 }
 
+void print_token(token *t){
+   if(t->type == INT) printf("%s(%ld)\n", type_to_str(t->type), t->number);
+   else if(t->type == DOUBLE) printf("%s(%f)\n", type_to_str(t->type), t->floating);
+   else printf("%s\n", type_to_str(t->type));
+}
+
 void print_tokens(token *tokens, size_t list_length){
    for(size_t i = 0; i < list_length; ++i){
-      if(tokens[i].type == INT) printf("%s(%ld)\n", type_to_str(tokens[i].type), tokens[i].number);
-      else if(tokens[i].type == DOUBLE) printf("%s(%f)\n", type_to_str(tokens[i].type), tokens[i].floating);
-      else printf("%s\n", type_to_str(tokens[i].type));
+      print_token(&tokens[i]);
    }
 }
 
@@ -108,7 +112,7 @@ token *split_file_contents(sb *file_contents, size_t *size){
    size_t start = 0;
    size_t end = 0;
    size_t file_length = file_contents->size;
-   char *raw_file = file_contents->string;
+   char *raw_file = sb_to_cstr(file_contents);
    size_t list_size = 0;
    size_t list_capacity = 16;
 
@@ -117,6 +121,11 @@ token *split_file_contents(sb *file_contents, size_t *size){
    assert(tokens);
 
    for(end = 0; end < file_length; ++end){
+      // ignore all leading whitespace
+      while(isspace(raw_file[start]) && end + 1 < file_length){
+         ++end;
+         ++start;
+      }
       if(isspace(raw_file[end])){
          sb new_word = sb_substring(file_contents, start, end - 1);
          if(list_size >= list_capacity){
@@ -126,6 +135,7 @@ token *split_file_contents(sb *file_contents, size_t *size){
          }
 
          tokens[list_size++] = sb_to_token(&new_word);
+         // sb_print(&new_word);
          sb_free(&new_word);
          start = end + 1;
       }else if(raw_file[end] == '"'){
@@ -140,6 +150,7 @@ token *split_file_contents(sb *file_contents, size_t *size){
                }
       
                tokens[list_size++] = sb_to_token(&new_word);
+               // sb_print(&new_word);
                sb_free(&new_word);
             }
             ++end;
@@ -148,6 +159,7 @@ token *split_file_contents(sb *file_contents, size_t *size){
       
       }
    }
+   free(raw_file);
 
    *size = list_size;
    return tokens;

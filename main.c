@@ -97,6 +97,7 @@ int interpreter(token *program, size_t program_size){
 
    while(op_index < program_size){
       current = &(program[op_index]);
+      // printf("op_index = %lu, stack_top = %lu\n", op_index, stack_top);
       switch(current->type){
          CASEPASS(MINUS)
          CASEPASS(DIV)
@@ -131,6 +132,31 @@ int interpreter(token *program, size_t program_size){
                free(token_to_print);
             }
          });
+         CASE(IF, {
+            // Do noting right now
+            // printf("IF\n");
+         });
+         CASE(DO, {
+            // printf("DO\n");
+            token *truthy = stack[--stack_top];
+            if(truthy->number){
+               // do nothing
+               // printf("Thing works\n");
+            }else{
+               op_index = current->number; // Go to end if the statement is false
+               // printf("truthy->num = %ld\n", truthy->number);
+               // printf("goto = %lu\n", op_index);
+               // goto END_LOOP;
+            }
+            if(truthy->freeable == 1){
+               free(truthy);
+            }
+         });
+         CASE(END, {
+            // printf("END\n");
+            op_index = current->number;
+            // printf("current->num = %ld\n", current->number);
+         });
          default:
             printf("%s in interpreter has not been implemented yet\n", type_to_str(current->type));
             assert(0);
@@ -138,8 +164,91 @@ int interpreter(token *program, size_t program_size){
 
       ++op_index;
    }
+// END_LOOP:
 
    return 0;
+}
+
+void token_parser(token *tokens, size_t num_tokens){
+   size_t op_index;
+   int stack_tracker = 0;
+   token *control_stack[num_tokens];
+   size_t stack_top = 0;
+
+   for(op_index = 0; op_index < num_tokens; ++op_index){
+      token *current = &(tokens[op_index]);
+
+      switch(current->type){
+         CASEPASS(INT)
+         CASEPASS(BOOLEAN)
+         CASE(DOUBLE, {
+            ++stack_tracker;
+         });
+         CASEPASS(MINUS)
+         CASEPASS(DIV)
+         CASEPASS(MULT)
+         CASEPASS(EQUAL)
+         CASE(PLUS, {
+            // Make sure there is a token on the stack
+            assert(stack_tracker > 0 && "Print expects a operator to print");
+            // Make sure there is a compatible token folowing this
+            assert(op_index + 1 < num_tokens && "Operator expects a right hand operation");
+
+            // Do nothing to the stack tracker because the operator will always add a item to the value
+            
+            ++op_index;
+         });
+         CASE(PRINT, {
+            // Make sure there is a token on the stack
+            assert(stack_tracker > 0 && "Print expects a operator to print");
+
+            --stack_tracker;
+         });
+         CASE(IF, {
+            current->number = -1;
+            control_stack[stack_top++] = current;
+         });
+         CASE(DO, {
+            assert(stack_tracker > 0 && "DO statements require a boolean expression");
+            assert(stack_top > 0 && "DO statements require a control statement");
+
+            TYPE control_op = control_stack[stack_top - 1]->type;
+            // print_token(current);
+
+            if(control_op == IF){
+               control_stack[stack_top++] = current;
+               assert(op_index + 1 < num_tokens && "DO statements require an ending token");
+            }else{
+               fprintf(stderr, "%s is not a control_op", type_to_str(control_op));
+            }
+         });
+         CASE(END, {
+            assert(stack_top > 0 && "END statements require a control and do statement");
+
+            token *do_op = control_stack[stack_top - 1];
+            
+
+            if(do_op->type == DO){
+               token *control_op = control_stack[stack_top - 2];
+               do_op->number = op_index; // if do is false go to end
+               current->number = control_op->number >= 0 ? control_op->number : (long)op_index;
+               // printf("if goto %ld\n", control_op->number);
+               // printf("do goto %ld\n", do_op->number);
+               // printf("end goto %ld\n", current->number);
+            }else{
+               fprintf(stderr, "END requires a DO statement not %s\n", type_to_str(do_op->type));
+               exit(1);
+            }
+
+            stack_top -= 2;
+         });
+         default: {
+            printf("%s is unimplemented\n", type_to_str(current->type));
+            assert(0 && "A token has not been implemented yet");
+         } break;
+      }
+   }
+
 }
 
 
@@ -154,10 +263,15 @@ int main(int argc, char *argv[]){
    if(strcmp(argv[1], "compile") == 0){
       size_t list_length;
       sb file_contents = sb_read_file(file_name);
+      printf("Reading tokens...\n");
       token *tokens = split_file_contents(&file_contents, &list_length);
       sb_free(&file_contents);
 
+      printf("Parsing %lu tokens....\n", list_length);
+      token_parser(tokens, list_length);
+
       tokens_to_bytes(tokens, list_length, file_name);
+      printf("Byte code created.\n");
       
       free_tokens(tokens, list_length);
    }else if(strcmp(argv[1], "run") == 0){
