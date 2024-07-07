@@ -7,86 +7,14 @@
 #include "stringbuilder.h"
 #include "token.h"
 
-#define STACK_SIZE 500
+#define STACK_SIZE 1000
 
 #define CASE(m, b) case m: b break
 #define CASEPASS(m) case m:
 
-#define get_value(v) (v->type == INT) ? v->number : v->floating
-#define is_numeric(t) (t == INT || t == DOUBLE)
-
 double absolute(double x){
    return x < 0.0 ? -1 * x : x;
 }
-
-void print_tokens(token *tokens, size_t list_length){
-   for(size_t i = 0; i < list_length; ++i){
-      if(tokens[i].type == INT) printf("%s(%ld)\n", type_to_str(tokens[i].type), tokens[i].number);
-      else if(tokens[i].type == DOUBLE) printf("%s(%f)\n", type_to_str(tokens[i].type), tokens[i].floating);
-      else printf("%s\n", type_to_str(tokens[i].type));
-   }
-}
-
-token *split_file_contents(sb *file_contents, size_t *size){
-   size_t start = 0;
-   size_t end = 0;
-   size_t file_length = file_contents->size;
-   char *raw_file = file_contents->string;
-   size_t list_size = 0;
-   size_t list_capacity = 16;
-
-   token *tokens = malloc(sizeof(token) * list_capacity);
-   // printf("list in bytes: %lu\n", sizeof(token) * list_capacity);
-   assert(tokens);
-
-   for(end = 0; end < file_length; ++end){
-      if(isspace(raw_file[end])){
-         sb new_word = sb_substring(file_contents, start, end - 1);
-         if(list_size >= list_capacity){
-            list_capacity *= 2;
-            tokens = realloc(tokens, list_capacity * sizeof(token));
-            assert(tokens);
-         }
-
-         tokens[list_size++] = sb_to_token(&new_word);
-         sb_free(&new_word);
-         start = end + 1;
-      }else if(raw_file[end] == '"'){
-         ++end;
-         while(end < file_length){
-            if(raw_file[end] == '"'){
-               sb new_word = sb_substring(file_contents, start + 1, end - 1);
-               if(list_size >= list_capacity){
-                  list_capacity *= 2;
-                  tokens = realloc(tokens, list_capacity * sizeof(token));
-                  assert(tokens);
-               }
-      
-               tokens[list_size++] = sb_to_token(&new_word);
-               sb_free(&new_word);
-            }
-            ++end;
-         }
-         start = end + 2;
-      
-      }
-   }
-
-   *size = list_size;
-   return tokens;
-}
-
-token *tokenizer(sb *strings, size_t length){
-
-   token *tokens = malloc(sizeof(token) * length);
-
-   for(size_t i = 0; i < length; ++i){
-      tokens[i] = sb_to_token(&(strings[i]));
-   }
-
-   return tokens;
-}
-
 
 token *do_equal(token *lhs, token *rhs){
    int equal_type;
@@ -216,26 +144,32 @@ int interpreter(token *program, size_t program_size){
 
 
 int main(int argc, char *argv[]){
-   if(argc != 2){
-      printf("usage: ./%s [file]\n", __FILE__);
+   if(argc != 3){
+      printf("usage: ./%s [compile|run] [file]\n", __FILE__);
       exit(1);
    }
 
-   const char *file_name = argv[1];
+   const char *file_name = argv[2];
 
-   size_t list_length;
-   // sb *list = sb_read_tokens(file_name, &list_length);
-   sb file_contents = sb_read_file(file_name);
-   token *tokens = split_file_contents(&file_contents, &list_length);
-   sb_free(&file_contents);
+   if(strcmp(argv[1], "compile") == 0){
+      size_t list_length;
+      sb file_contents = sb_read_file(file_name);
+      token *tokens = split_file_contents(&file_contents, &list_length);
+      sb_free(&file_contents);
 
-   // token *tokens = tokenizer(list, list_length);
+      tokens_to_bytes(tokens, list_length, file_name);
+      
+      free_tokens(tokens, list_length);
+   }else if(strcmp(argv[1], "run") == 0){
+      size_t list_length;
+      token *tokens = tokens_from_bytes(file_name, &list_length);
 
+      interpreter(tokens, list_length);
 
-   interpreter(tokens, list_length);
-   
-   free_tokens(tokens, list_length);
-   // sb_free_list(list, list_length);
+      free_tokens(tokens, list_length);
+   }else{
+      fprintf(stderr, "'%s' is an unrecognized command\n", argv[1]);
+   }
 
    return 0;
 }
