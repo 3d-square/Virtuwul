@@ -19,6 +19,7 @@ char *type_to_str(TYPE type){
       case STRING: return "STRING";
       case CHAR  : return "CHAR";
       case PLUS  : return "PLUS";
+      case LESS  : return "LESS";
       case MINUS : return "MINUS";
       case DIV   : return "DIV";
       case MULT  : return "MULT";
@@ -29,6 +30,10 @@ char *type_to_str(TYPE type){
       case IF    : return "IF";
       case DO    : return "DO";
       case END   : return "END";
+      case FOR   : return "FOR";
+      case SET   : return "SET";
+      case TO    : return "TO";
+      case VAR_INT : return "VAR_INT";
    }
 
    return "";
@@ -36,7 +41,7 @@ char *type_to_str(TYPE type){
 
 token sb_to_token(sb *str){
    // sb_print(str);
-   token new_token;
+   token new_token = {0};
    TYPE type = NONE;
    
    if(sb_strequal(str, "+", 1)){
@@ -47,14 +52,22 @@ token sb_to_token(sb *str){
       type = DIV;
    }else if(sb_strequal(str, "*", 1)){
       type = MULT;
+   }else if(sb_strequal(str, "<", 1)){
+      type = LESS;
+   }else if(sb_strequal(str, "=", 1)){
+      type = SET;
    }else if(sb_strequal(str, "==", 2)){
       type = EQUAL;
    }else if(sb_strequal(str, "if", 2)){
       type = IF;
    }else if(sb_strequal(str, "do", 2)){
       type = DO;
+   }else if(sb_strequal(str, "->", 2)){
+      type = TO;
    }else if(sb_strequal(str, "end", 3)){
       type = END;
+   }else if(sb_strequal(str, "for", 3)){
+      type = FOR;
    }else if(sb_strequal(str, "print", 5)){
       type = PRINT;
    }else if(sb_strequal(str, "true", 4)){
@@ -99,6 +112,7 @@ void free_tokens(token *tokens, size_t length){
 void print_token(token *t){
    if(t->type == INT) printf("%s(%ld)\n", type_to_str(t->type), t->number);
    else if(t->type == DOUBLE) printf("%s(%f)\n", type_to_str(t->type), t->floating);
+   else if(t->type == DO) printf("DO -> %ld\n", t->number);
    else printf("%s\n", type_to_str(t->type));
 }
 
@@ -108,101 +122,15 @@ void print_tokens(token *tokens, size_t list_length){
    }
 }
 
-token *split_file_contents(sb *file_contents, size_t *size){
-   size_t start = 0;
-   size_t end = 0;
-   size_t file_length = file_contents->size;
-   char *raw_file = sb_to_cstr(file_contents);
-   size_t list_size = 0;
-   size_t list_capacity = 16;
-
-   token *tokens = malloc(sizeof(token) * list_capacity);
-   // printf("list in bytes: %lu\n", sizeof(token) * list_capacity);
-   assert(tokens);
-
-   for(end = 0; end < file_length; ++end){
-      // ignore all leading whitespace
-      while(isspace(raw_file[start]) && end + 1 < file_length){
-         ++end;
-         ++start;
-      }
-      if(isspace(raw_file[end])){
-         sb new_word = sb_substring(file_contents, start, end - 1);
-         if(list_size >= list_capacity){
-            list_capacity *= 2;
-            tokens = realloc(tokens, list_capacity * sizeof(token));
-            assert(tokens);
-         }
-
-         tokens[list_size++] = sb_to_token(&new_word);
-         // sb_print(&new_word);
-         sb_free(&new_word);
-         start = end + 1;
-      }else if(raw_file[end] == '"'){
-         ++end;
-         while(end < file_length){
-            if(raw_file[end] == '"'){
-               sb new_word = sb_substring(file_contents, start + 1, end - 1);
-               if(list_size >= list_capacity){
-                  list_capacity *= 2;
-                  tokens = realloc(tokens, list_capacity * sizeof(token));
-                  assert(tokens);
-               }
-      
-               tokens[list_size++] = sb_to_token(&new_word);
-               // sb_print(&new_word);
-               sb_free(&new_word);
-            }
-            ++end;
-         }
-         start = end + 2;
-      
-      }
-   }
-   free(raw_file);
-
-   *size = list_size;
-   return tokens;
-}
-
-/*
-token *tokenizer(sb *strings, size_t length){
-
-   token *tokens = malloc(sizeof(token) * length);
-
-   for(size_t i = 0; i < length; ++i){
-      tokens[i] = sb_to_token(&(strings[i]));
-   }
-
-   return tokens;
-} 
-*/
-
-void tokens_to_bytes(token *tokens, size_t list_length, const char *file_name){
-   char bytecode[strlen(file_name) + 4];
-   strcpy(bytecode, file_name);
-   strcat(bytecode, ".bc");
-   bytecode[strlen(file_name) + 3] = '\0';
-   
-   FILE *output_file = fopen(bytecode, "wb");
-   assert(output_file);
-
-   fwrite((char *)(&list_length), sizeof(list_length), 1, output_file);
-
-   fwrite((char *)tokens, TOKEN_SIZE, list_length, output_file);
-
-   fclose(output_file);
-}
-
 token *tokens_from_bytes(const char *file_name, size_t *list_length){
    FILE *input_file = fopen(file_name, "rb");
    assert(input_file);
 
    token *tokens;
-
    // Read in the number of tokens
    fread(list_length, sizeof(size_t), 1, input_file);
 
+   printf("%lu\n", *list_length);
    tokens = malloc(TOKEN_SIZE * (*list_length));
    assert(tokens);
 

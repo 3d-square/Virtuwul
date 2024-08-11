@@ -1,18 +1,17 @@
-UTILS=stringbuilder.o token.o typecheck.o
 HEADERS=token.h stringbuilder.h
+OBJ=./obj/interpreter.o ./obj/parser.o ./obj/token.o ./obj/typecheck.o ./obj/stringbuilder.o ./obj/linked_token.o
+CFLAGS=-Wall -Wextra -Werror # -Wfatal-errors 
+INCLUDE_PATH=-I ./include/
+all: virtuwul $(OBJ)
 
-all: interpreter 
+virtuwul: ./src/main.c $(OBJ)
+	gcc $(CFLAGS) $(INCLUDE_PATH) -o $@ ./src/main.c $(OBJ)
 
-interpreter: main.c stringbuilder.o token.o typecheck.o 
-	gcc -Wall -Wextra -Werror -Wfatal-errors $(UTILS) -o $@ $<
+./obj/%.o: ./src/%.c
+	gcc $(CFLAGS) $(INCLUDE_PATH) -c -o $@ $<
 
+clean:
+	rm ./obj/* virtuwul
 
-stringbuilder.o: stringbuilder.c stringbuilder.h
-	gcc -Wall -Wextra -Werror -Wfatal-errors -c -o $@ $<
-
-
-token.o: token.c token.h
-	gcc -Wall -Wextra -Werror -Wfatal-errors -c -o $@ $<
-
-typecheck.o: typecheck.c typecheck.h
-	gcc -Wall -Wextra -Werror -Wfatal-errors -c -o $@ $<
+tests: ./src/test.c
+	gcc $(CFLAGS) $(INCLUDE_PATH) -o tmptest ./src/test.c $(OBJ)

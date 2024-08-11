@@ -1,7 +1,8 @@
 #ifndef _TOKEN_
 #define _TOKEN_
 
-#include "token.h"
+// #include <linked_token.h>
+#include <stringbuilder.h>
 
 #define get_value(v) (v->type == INT) ? v->number : v->floating
 #define is_numeric(t) (t == INT || t == DOUBLE)
@@ -16,13 +17,18 @@ typedef enum _ttype{
    MINUS,
    DIV,
    MULT,
+   LESS,
    BOOLEAN,
    EQUAL,
    PRINT,
    NONE,
    IF,
    DO,
-   END
+   END,
+   FOR,
+   VAR_INT,
+   TO,
+   SET
 } TYPE;
 
 typedef struct _token{
@@ -34,6 +40,7 @@ typedef struct _token{
       char c;
       char *string;
       void *data;
+      int values[4];
    };
 } token;
 
@@ -46,10 +53,6 @@ void free_tokens(token *, size_t);
 void print_tokens(token *, size_t);
 
 void print_token(token *);
-
-token *split_file_contents(sb *, size_t *);
-
-void tokens_to_bytes(token *, size_t, const char *);
 
 token *tokens_from_bytes(const char *, size_t *);
 

@@ -1,4 +1,7 @@
-*.o
+obj/*.o
 interpreter
+virtuwul
 *.bc
-*.txt
+*.vw
+tmptest
+out
